@@ -1,11 +1,15 @@
 import type { MonthGroup, Story, StoryWithLane } from '../api/types/worker'
-import { getMonthLabel } from './date'
+import { daysBetween, getMonthLabel, isValidDateStr } from './date'
 
 export const DAY_WIDTH = 40
-export const SIDEBAR_WIDTH = 180
+export const SIDEBAR_WIDTH = 140
 export const BAR_HEIGHT = 24
 export const BAR_GAP = 4
 export const ROW_PADDING = 8
+export const HEADER_HEIGHT = 72
+
+export const COLOR_PROGRESS_DONE = '#52c41a'
+export const COLOR_PROGRESS_TODO = '#fa8c16'
 
 export function groupDatesByMonth(dates: Date[]): MonthGroup[] {
   const groups: MonthGroup[] = []
@@ -24,8 +28,32 @@ export function groupDatesByMonth(dates: Date[]): MonthGroup[] {
   return groups
 }
 
+export function isStoryValid(story: Story): boolean {
+  return (
+    isValidDateStr(story.expect_start_at) &&
+    isValidDateStr(story.expect_end_at) &&
+    story.expect_start_at <= story.expect_end_at
+  )
+}
+
 export function isStoryInRange(story: Story, start: string, end: string): boolean {
+  if (!isStoryValid(story)) return false
   return story.expect_start_at <= end && story.expect_end_at >= start
+}
+
+export function getVisibleStoryRange(
+  story: Story,
+  rangeStart: string,
+  rangeEnd: string,
+): { start: string; end: string } | null {
+  if (!isStoryInRange(story, rangeStart, rangeEnd)) return null
+
+  const start =
+    story.expect_start_at < rangeStart ? rangeStart : story.expect_start_at
+  const end = story.expect_end_at > rangeEnd ? rangeEnd : story.expect_end_at
+
+  if (start > end) return null
+  return { start, end }
 }
 
 export function assignLanes(stories: Story[]): StoryWithLane[] {
@@ -69,10 +97,14 @@ export function getRowHeight(laneCount: number): number {
 export function getBarStyle(
   story: StoryWithLane,
   rangeStart: string,
+  rangeEnd: string,
   dayWidth: number,
-): Record<string, string> {
-  const startOffset = daysBetween(rangeStart, story.expect_start_at)
-  const endOffset = daysBetween(rangeStart, story.expect_end_at)
+): Record<string, string> | null {
+  const visibleRange = getVisibleStoryRange(story, rangeStart, rangeEnd)
+  if (!visibleRange) return null
+
+  const startOffset = daysBetween(rangeStart, visibleRange.start)
+  const endOffset = daysBetween(rangeStart, visibleRange.end)
   const top = ROW_PADDING + story.lane * (BAR_HEIGHT + BAR_GAP)
 
   return {
@@ -83,20 +115,10 @@ export function getBarStyle(
   }
 }
 
-export function getBarColor(progress: number): string {
-  if (progress >= 1) return '#52c41a'
-  if (progress >= 0.8) return '#73d13d'
-  return '#fa8c16'
+export function getProgressPercent(progress: number): number {
+  return Math.min(100, Math.max(0, Math.round(progress * 100)))
 }
 
 export function formatProgressLabel(progress: number, title: string): string {
-  return `${Math.round(progress * 100)}% ${title}`
-}
-
-function daysBetween(from: string, to: string): number {
-  const fromDate = new Date(from)
-  const toDate = new Date(to)
-  fromDate.setHours(0, 0, 0, 0)
-  toDate.setHours(0, 0, 0, 0)
-  return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000)
+  return `${getProgressPercent(progress)}% ${title}`
 }

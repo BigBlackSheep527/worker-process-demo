@@ -3,13 +3,16 @@ import type { Worker } from '../api/types/worker'
 
 const props = defineProps<{
   workers: Worker[]
-  selectedMember: number | ''
-  dateRange: [string, string]
+  selectedMembers: number[]
+  startDate: string
+  endDate: string
 }>()
 
 const emit = defineEmits<{
-  'update:selectedMember': [value: number | '']
-  'update:dateRange': [value: [string, string]]
+  'update:selectedMembers': [value: number[]]
+  'update:startDate': [value: string]
+  'update:endDate': [value: string]
+  reset: []
 }>()
 
 const activeTab = defineModel<string>('activeTab', { default: 'stats' })
@@ -30,11 +33,14 @@ const activeTab = defineModel<string>('activeTab', { default: 'stats' })
       <div class="filter-item">
         <span class="filter-label">成员</span>
         <el-select
-          :model-value="selectedMember"
+          :model-value="selectedMembers"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
           placeholder="全部成员"
           clearable
-          style="width: 160px"
-          @update:model-value="emit('update:selectedMember', $event ?? '')"
+          style="width: 200px"
+          @update:model-value="emit('update:selectedMembers', $event ?? [])"
         >
           <el-option
             v-for="worker in workers"
@@ -48,18 +54,28 @@ const activeTab = defineModel<string>('activeTab', { default: 'stats' })
       <div class="filter-item">
         <span class="filter-label">开始时间</span>
         <el-date-picker
-          :model-value="dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
+          :model-value="startDate"
+          type="date"
+          placeholder="开始日期"
           value-format="YYYY-MM-DD"
-          style="width: 280px"
-          @update:model-value="
-            emit('update:dateRange', ($event as [string, string] | null) ?? props.dateRange)
-          "
+          style="width: 150px"
+          @update:model-value="emit('update:startDate', ($event as string) ?? props.startDate)"
         />
       </div>
+
+      <div class="filter-item">
+        <span class="filter-label">结束时间</span>
+        <el-date-picker
+          :model-value="endDate"
+          type="date"
+          placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          style="width: 150px"
+          @update:model-value="emit('update:endDate', ($event as string) ?? props.endDate)"
+        />
+      </div>
+
+      <el-button class="reset-btn" @click="emit('reset')">重置</el-button>
     </div>
   </header>
 </template>
@@ -96,12 +112,20 @@ const activeTab = defineModel<string>('activeTab', { default: 'stats' })
   display: none;
 }
 
+.header-tabs :deep(.el-tabs__item.is-active) {
+  color: #11aa66;
+}
+
+.header-tabs :deep(.el-tabs__active-bar) {
+  background-color: #11aa66;
+}
+
 .filters {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   padding: 12px 24px;
-  background: #fafafa;
+  background: #fff;
   border-top: 1px solid #f0f0f0;
 }
 
@@ -115,5 +139,17 @@ const activeTab = defineModel<string>('activeTab', { default: 'stats' })
   font-size: 14px;
   color: #666;
   white-space: nowrap;
+}
+
+.reset-btn {
+  margin-left: auto;
+  color: #11aa66;
+  border-color: #11aa66;
+}
+
+.reset-btn:hover {
+  color: #0d8f55;
+  border-color: #0d8f55;
+  background: #f0faf5;
 }
 </style>
